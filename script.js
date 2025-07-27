@@ -177,107 +177,9 @@ function startQuiz() {
 }
 
 // Display the next question in the quiz
-function nextQuiz() {
-    const container = document.getElementById('quizArea');
-    container.innerHTML = '';
-    if (currentIndex >= quizOrder.length) {
-        container.innerHTML = '<p>做题结束！</p>';  // end of quiz
-        return;
-    }
-    const meaningKey = quizOrder[currentIndex++];
-    currentQuestion = meaningKey;
-    const words = data[meaningKey][0];    // English words for this meaning
-    const meaning = data[meaningKey][1];  // Chinese meaning (same as meaningKey)
-    // Determine the correct English words for this question.
-    // We take up to 2 lowest-score words from the group as the ones to be answered:contentReference[oaicite:37]{index=37}
-    currentCorrect = [...words].sort((a, b) => getWordScore(a) - getWordScore(b)).slice(0, 2);
-    // Choose a distractor meaning (different from current) that doesn't share words
-    let distractorMeaning;
-    do {
-        distractorMeaning = keys[Math.floor(Math.random() * keys.length)];
-    } while (
-        distractorMeaning === meaningKey ||
-        data[distractorMeaning][0].some(w => currentCorrect.includes(w))
-        );
-    // Prepare Chinese meaning options (correct vs distractor):contentReference[oaicite:38]{index=38}
-    const chineseOptions = [meaningKey, distractorMeaning]
-        .map(m => ({ key: m, meaning: data[m][1] }))
-        .sort(() => Math.random() - 0.5);
-    // Prepare English options: correct words + random filler words (excluding any that share meanings with correct or distractor):contentReference[oaicite:39]{index=39}
-    const distractorWords = data[distractorMeaning][0];
-    const fillerWords = keys
-        .flatMap(k => data[k][0])
-        .filter(w => !currentCorrect.includes(w) && !distractorWords.includes(w))
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 4 - currentCorrect.length);  // get enough fillers to total 4 options
-    const allOptions = [...currentCorrect, ...fillerWords].sort(() => Math.random() - 0.5);
-    // Build the quiz question card HTML
-    let quizHTML = `<div class='card'><strong>请选择对应下列中文释义的英文单词</strong>`;
-    // Chinese meaning radio options (two options):contentReference[oaicite:40]{index=40}
-    quizHTML += `<div class="chinese-options">`;
-    chineseOptions.forEach(opt => {
-        quizHTML += `<label id="chinese_${opt.key}">` +
-            `<input type="radio" name="chinese_choice" value="${opt.key}"> ${opt.meaning}` +
-            `</label>`;
-    });
-    quizHTML += `</div>`;
-    // English word options (checkboxes for multiple correct):contentReference[oaicite:41]{index=41}
-    quizHTML += `<div class="choices">`;
-    allOptions.forEach(word => {
-        quizHTML += `<label><input type="checkbox" name="choice" value="${word}"> ${plainWord(word)}</label><br>`;
-    });
-    quizHTML += `</div>`;
-    // Action buttons
-    quizHTML += `<button onclick="submitAnswer()">提交</button>`;
-    quizHTML += `<button onclick="iDontKnow()" style="margin-left:10px;background:#eee;">我不会</button>`;
-    quizHTML += `<button id="nextQuizBtn" onclick="nextQuiz()" style="display:none;margin-top:1rem;">下一题</button>`;
-    quizHTML += `</div>`;
-    container.innerHTML = quizHTML;
-}
+/** 1. nextQuiz(): 出题，显示英文词干 + 4 个英文选项（仅 1 个正确同义词） */
 
-// Submit the answer for the current quiz question
-function submitAnswer() {
-    const selectedWords = Array.from(document.querySelectorAll('input[name="choice"]:checked'))
-        .map(el => el.value);
-    const selectedChineseEl = document.querySelector('input[name="chinese_choice"]:checked');
-    if (!selectedChineseEl || selectedWords.length !== currentCorrect.length) {
-        alert("请选择两个英文单词和对应的中文释义！");  // ensure both parts selected
-        return;
-    }
-    const selectedKey = selectedChineseEl.value;  // chosen meaning (key)
-    const correctKey = currentQuestion;           // correct meaning key
-    const correctWords = currentCorrect;          // array of correct English words
-    const meaning = currentQuestion;              // Chinese meaning text (same as key)
-    // Highlight the correct and incorrect selections
-    highlightChinese(correctKey, selectedKey, 'chinese');
-    highlightEnglish(correctWords, selectedWords, 'choice');
-    if (selectedKey === correctKey && correctWords.every(w => selectedWords.includes(w))) {
-        // Correct answer: increase score and auto-advance:contentReference[oaicite:42]{index=42}
-        updateScore(correctWords, +1);
-        setTimeout(nextQuiz, 1000);
-    } else {
-        // Wrong answer: decrease score, record wrong, show Next button:contentReference[oaicite:43]{index=43}:contentReference[oaicite:44]{index=44}
-        updateScore(correctWords, -1);
-        recordWrong(meaning, correctWords);
-        document.getElementById('nextQuizBtn').style.display = 'inline-block';
-        // Reveal Chinese meanings for all options to educate user:contentReference[oaicite:45]{index=45}
-        const allOptionInputs = document.querySelectorAll('input[name="choice"]');
-        allOptionInputs.forEach(input => {
-            const word = input.value;
-            const label = input.parentElement;
-            const ch = wordMap[word];
-            if (ch) {
-                const span = document.createElement('span');
-                span.style.marginLeft = '0.5em';
-                span.style.color = '#999';
-                span.textContent = `(${ch})`;
-                if (!label.innerText.includes(ch)) {
-                    label.appendChild(span);
-                }
-            }
-        });
-    }
-}
+
 
 // Start reviewing wrong-list words
 function startWrongReview() {
@@ -289,133 +191,7 @@ function startWrongReview() {
 }
 
 // Display the next question from the wrong list
-function nextWrong() {
-    const container = document.getElementById('wrongArea');
-    container.innerHTML = '';
-    if (currentIndex >= wrongList.length) {
-        container.innerHTML = '<p>错题训练结束！</p>';
-        // Show wrongCards again (updated) after finishing
-        document.getElementById('wrongCards').style.display = 'block';
-        switchTab('wrong');  // refresh wrong tab display
-        return;
-    }
-    // Get the next wrong entry (meaning and correct words)
-    const q = wrongList[currentIndex++];
-    const meaning = q.meaning;
-    const correctWords = q.correct;
-    currentQuestion = meaning;
-    // If the correctWords array is larger than 2, limit to 2 for the question
-    currentCorrect = [...correctWords].sort((a, b) => getWordScore(a) - getWordScore(b)).slice(0, 2);
-    // Pick a distractor meaning that is different and reasonably small set
-    let distractorMeaning = null;
-    const availableMeanings = keys.filter(k => k !== meaning);
-    // Try to find a distractor meaning with no overlapping words and with few words
-    for (let i = 0; i < 50; i++) {
-        const cand = availableMeanings[Math.floor(Math.random() * availableMeanings.length)];
-        const candWords = data[cand][0];
-        // ensure no overlap and not a huge list (to provide only one distractor word later)
-        if (!candWords.some(w => correctWords.includes(w)) && candWords.length <= 5) {
-            distractorMeaning = cand;
-            break;
-        }
-    }
-    if (!distractorMeaning) {
-        distractorMeaning = availableMeanings[Math.floor(Math.random() * availableMeanings.length)];
-    }
-    // Prepare Chinese meaning options (correct vs distractor)
-    const chineseOptions = [meaning, distractorMeaning]
-        .map(m => ({ key: m, meaning: m }))
-        .sort(() => Math.random() - 0.5);
-    // Prepare English options: two correct + one distractor word + other fillers
-    const distractorWord = data[distractorMeaning][0][0];  // take one word from distractor meaning
-    const fillerWords = keys.flatMap(k => data[k][0])
-        .filter(w => !currentCorrect.includes(w) && w !== distractorWord && !correctWords.includes(w))
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 4 - currentCorrect.length - 1);
-    const allOptions = [...currentCorrect, distractorWord, ...fillerWords].sort(() => Math.random() - 0.5);
-    // Build the wrong question card
-    let wrongHTML = `<div class='card'><strong>选择两个英文单词和对应的一个中文释义</strong>`;
-    wrongHTML += `<div class="chinese-options">`;
-    chineseOptions.forEach(opt => {
-        wrongHTML += `<label id="wrong_chinese_${opt.key}">` +
-            `<input type="radio" name="chinese_choice" value="${opt.key}"> ${opt.meaning}` +
-            `</label>`;
-    });
-    wrongHTML += `</div>`;
-    wrongHTML += `<div class='choices'>`;
-    allOptions.forEach(word => {
-        wrongHTML += `<label><input type="checkbox" name="wrong_choice" value="${word}"> ${plainWord(word)}</label><br>`;
-    });
-    wrongHTML += `</div>`;
-    wrongHTML += `<button onclick="submitWrongAnswer()">提交</button>`;
-    wrongHTML += `<button onclick="iDontKnowWrong()" style="margin-left:10px;background:#eee;">我不会</button>`;
-    wrongHTML += `<button id="nextWrongBtn" onclick="nextWrong()" style="display:none;margin-top:1rem;">下一题</button>`;
-    wrongHTML += `<button onclick="removeWrong(${currentIndex - 1})" style="margin-top:1rem;">删除本题</button>`;
-    wrongHTML += `<button onclick="exitWrongReview()" style="margin-top:1rem;background:#ccc;">退出训练</button>`;
-    wrongHTML += `</div>`;
-    container.appendChild(document.createRange().createContextualFragment(wrongHTML));
-}
-
-// Submit the answer for the current wrong-list question
-function submitWrongAnswer() {
-    const selectedWords = Array.from(document.querySelectorAll('input[name="wrong_choice"]:checked'))
-        .map(el => el.value);
-    const selectedChineseEl = document.querySelector('input[name="chinese_choice"]:checked');
-    if (!selectedChineseEl || selectedWords.length !== currentCorrect.length) {
-        alert("请选择两个英文和一个中文！");
-        return;
-    }
-    const chosenChinese = selectedChineseEl.value;
-    const correctChinese = currentQuestion;
-    const labels = document.querySelectorAll('input[name="wrong_choice"]');
-    const isChineseCorrect = (chosenChinese === correctChinese);
-    const isWordsCorrect = currentCorrect.every(w => selectedWords.includes(w));
-    // Highlight the Chinese options
-    const correctLabel = document.getElementById(`wrong_chinese_${correctChinese}`);
-    const chosenLabel = document.getElementById(`wrong_chinese_${chosenChinese}`);
-    if (correctLabel) correctLabel.style.background = '#c8f7c5'; // correct: green
-    if (!isChineseCorrect && chosenLabel) chosenLabel.style.background = '#f8d7da'; // wrong: red
-    if (isChineseCorrect && isWordsCorrect) {
-        // Correct: highlight selected words in green:contentReference[oaicite:46]{index=46}:contentReference[oaicite:47]{index=47}
-        selectedWords.forEach(sel => {
-            const input = [...labels].find(l => l.value === sel);
-            if (input) input.parentElement.style.background = '#c8f7c5';
-        });
-        // Remove this item from wrongList as it's answered correctly
-        removeWrong(currentIndex - 1);
-        // Continue to next after brief delay
-        setTimeout(nextWrong, 1000);
-    } else {
-        // Wrong: highlight selected words in red, correct words in green
-        selectedWords.forEach(sel => {
-            const input = [...labels].find(l => l.value === sel);
-            if (input) input.parentElement.style.background = '#f8d7da';
-        });
-        [...labels].forEach(input => {
-            if (currentCorrect.includes(input.value)) {
-                input.parentElement.style.background = '#c8f7c5';
-            }
-        });
-        // Show Chinese meaning for all options:contentReference[oaicite:48]{index=48}:contentReference[oaicite:49]{index=49}
-        [...labels].forEach(input => {
-            const word = input.value;
-            const label = input.parentElement;
-            const ch = wordMap[word];
-            if (ch) {
-                const span = document.createElement('span');
-                span.style.marginLeft = '0.5em';
-                span.style.color = '#999';
-                span.textContent = `(${ch})`;
-                if (!label.innerText.includes(ch)) {
-                    label.appendChild(span);
-                }
-            }
-        });
-        // Show Next button to proceed
-        const nextBtn = document.getElementById('nextWrongBtn');
-        if (nextBtn) nextBtn.style.display = 'inline-block';
-    }
-}
+/** 4. nextWrong(): 错题模式同样改成 “英文→四选一英文同义词” 题型 */
 
 // Record a wrong answer: add to wrongList (if not already present), then save data:contentReference[oaicite:50]{index=50}
 async function recordWrong(meaning, correctWords) {
@@ -447,64 +223,7 @@ function exitWrongReview() {
 }
 
 // "I don't know" in quiz mode: treat as wrong answer immediately:contentReference[oaicite:51]{index=51}:contentReference[oaicite:52]{index=52}
-function iDontKnow() {
-    const correctKey = currentQuestion;
-    const correctWords = currentCorrect;
-    // Highlight the correct Chinese option (we know it)
-    highlightChinese(correctKey, correctKey, 'chinese');
-    // Highlight correct English words (none selected by user)
-    highlightEnglish(correctWords, [], 'choice');
-    // Show Chinese meanings for all options
-    const labels = document.querySelectorAll('input[name="choice"]');
-    labels.forEach(input => {
-        const word = input.value;
-        const label = input.parentElement;
-        const ch = wordMap[word];
-        if (ch) {
-            const span = document.createElement('span');
-            span.style.marginLeft = '0.5em';
-            span.style.color = '#999';
-            span.textContent = `(${ch})`;
-            if (!label.innerText.includes(ch)) {
-                label.appendChild(span);
-            }
-        }
-    });
-    // Update score and record to wrong list
-    updateScore(correctWords, -1);
-    recordWrong(correctKey, correctWords);
-    // Show Next button
-    document.getElementById('nextQuizBtn').style.display = 'inline-block';
-}
-
-// "I don't know" in wrong mode
-function iDontKnowWrong() {
-    const correctKey = currentQuestion;
-    const correctWords = currentCorrect;
-    // Highlight correct Chinese
-    highlightChinese(correctKey, correctKey, 'wrong_chinese');
-    // Highlight correct English
-    highlightEnglish(correctWords, [], 'wrong_choice');
-    // Show meanings for all options
-    const labels = document.querySelectorAll('input[name="wrong_choice"]');
-    labels.forEach(input => {
-        const word = input.value;
-        const label = input.parentElement;
-        const ch = wordMap[word];
-        if (ch) {
-            const span = document.createElement('span');
-            span.style.marginLeft = '0.5em';
-            span.style.color = '#999';
-            span.textContent = `(${ch})`;
-            if (!label.innerText.includes(ch)) {
-                label.appendChild(span);
-            }
-        }
-    });
-    // (Do not remove from wrong list, user will see it again)
-    const nextBtn = document.getElementById('nextWrongBtn');
-    if (nextBtn) nextBtn.style.display = 'inline-block';
-}
+/** 3. iDontKnow(): “我不会” 视同答错，只高亮正确选项并记录错题 */
 
 // Update the score of given words by delta (increment or decrement):contentReference[oaicite:53]{index=53}
 async function updateScore(words, delta) {
@@ -662,3 +381,182 @@ function switchTab(tabId) {
 window.onload = async function() {
     await loadUserData();
 };
+
+
+/** nextQuiz(): 出题，英文→四个中文选项 + 题号/总题数 显示 */
+function nextQuiz() {
+    const container = document.getElementById('quizArea');
+    container.innerHTML = '';
+
+    // 如果已完成
+    if (currentIndex >= quizOrder.length) {
+        container.innerHTML = '<p>做题结束！</p>';
+        return;
+    }
+
+    // 显示题号
+    const total = quizOrder.length;
+    const num = currentIndex + 1;
+    container.innerHTML = `<div style="margin-bottom:0.5em;">第 ${num} 题 / 共 ${total} 题</div>`;
+
+    // 取当前测试的中文释义键
+    const meaningKey = quizOrder[currentIndex++];
+    currentQuestion = meaningKey;
+    // 正确中文释义
+    const correctChinese = data[meaningKey][1];
+    // 干扰释义
+    const otherMeanings = keys.filter(k => k !== meaningKey).map(k => data[k][1]);
+    const distractors = [];
+    while (distractors.length < 3 && otherMeanings.length) {
+        const idx = Math.floor(Math.random() * otherMeanings.length);
+        const m = otherMeanings.splice(idx, 1)[0];
+        if (!distractors.includes(m)) distractors.push(m);
+    }
+    const choices = [correctChinese, ...distractors].sort(() => Math.random() - 0.5);
+
+    // 题干（随便取组内第一个英文）
+    const questionWord = data[meaningKey][0][0];
+    let html = `<div class="card"><strong>${questionWord}</strong><br>`;
+    html += `<div class="chinese-options">`;
+    choices.forEach(ch => {
+        html += `<label id="chinese_${ch}">` +
+            `<input type="radio" name="quiz_choice" value="${ch}"> ${ch}` +
+            `</label><br>`;
+    });
+    html += `</div>`;
+    html += `<button onclick="submitAnswer()">提交</button>`;
+    html += `<button onclick="iDontKnow()">我不会</button>`;
+    html += `<button id="nextQuizBtn" onclick="nextQuiz()" style="display:none;margin-top:1rem;">下一题</button>`;
+    html += `</div>`;
+
+    container.innerHTML += html;
+}
+/** submitAnswer(): 检查中文选项是否正确，答对自动跳转下一题，答错入错题集 */
+function submitAnswer() {
+    const sel = document.querySelector("input[name='quiz_choice']:checked");
+    if (!sel) {
+        alert('请选择一个中文释义');
+        return;
+    }
+    const chosen = sel.value;
+    const correct = data[currentQuestion][1];
+    const questionWord = data[currentQuestion][0][0]; // 英文题干
+
+    // 高亮中文选项：正确绿，错误红
+    highlightChinese(currentQuestion, chosen, 'chinese');
+
+    // 判断并计分/错题
+    if (chosen === correct) {
+        updateScore([ questionWord ], +1);
+        // 自动下一题
+        setTimeout(() => {
+            // 如果到末尾则清空
+            if (currentIndex >= quizOrder.length) {
+                document.getElementById('quizArea').innerHTML = '<p>做题结束！</p>';
+            } else {
+                nextQuiz();
+            }
+        }, 500);
+    } else {
+        updateScore([ questionWord ], -1);
+        recordWrong(currentQuestion, [ questionWord ]);
+        document.getElementById('nextQuizBtn').style.display = 'inline-block';
+    }
+}
+/** iDontKnow(): 我不会时高亮正确项并记录错题，随后点击“下一题” */
+function iDontKnow() {
+    const correct = data[currentQuestion][1];
+    const questionWord = data[currentQuestion][0][0];
+    // 高亮正确选项
+    highlightChinese(currentQuestion, correct, 'chinese');
+    // 扣分并记录错题
+    updateScore([ questionWord ], -1);
+    recordWrong(currentQuestion, [ questionWord ]);
+    document.getElementById('nextQuizBtn').style.display = 'inline-block';
+}
+/** nextWrong(): 错题模式 → 英文题干→四中文选项 + 题号/总题数 */
+function nextWrong() {
+    const container = document.getElementById('wrongArea');
+    container.innerHTML = '';
+
+    if (currentIndex >= wrongList.length) {
+        container.innerHTML = '<p>错题训练结束！</p>';
+        document.getElementById('wrongCards').style.display = 'block';
+        switchTab('wrong');
+        return;
+    }
+
+    // 顶部题号
+    const total = wrongList.length;
+    const num = currentIndex + 1;
+    container.innerHTML = `<div style="margin-bottom:0.5em;">第 ${num} 题 / 共 ${total} 题</div>`;
+
+    // 本轮数据
+    const entry = wrongList[currentIndex++];
+    const correctChinese = entry.meaning;
+    const questionWord = entry.english;
+
+    // 干扰项
+    const otherMeanings = keys.filter(k => k !== correctChinese).map(k => data[k][1]);
+    const distractors = [];
+    while (distractors.length < 3 && otherMeanings.length) {
+        const idx = Math.floor(Math.random() * otherMeanings.length);
+        const m = otherMeanings.splice(idx,1)[0];
+        if (!distractors.includes(m)) distractors.push(m);
+    }
+    const choices = [correctChinese, ...distractors].sort(() => Math.random() - 0.5);
+
+    // 渲染
+    let html = `<div class="card"><strong>${questionWord}</strong><br>`;
+    html += `<div class="chinese-options">`;
+    choices.forEach(ch => {
+        html += `<label id="wrong_chinese_${ch}">` +
+            `<input type="radio" name="wrong_choice" value="${ch}"> ${ch}` +
+            `</label><br>`;
+    });
+    html += `</div>`;
+    html += `<button onclick="submitWrongAnswer()">提交</button>`;
+    html += `<button onclick="iDontKnowWrong()">我不会</button>`;
+    html += `<button id="nextWrongBtn" onclick="nextWrong()" style="display:none;margin-top:1rem;">下一题</button>`;
+    html += `</div>`;
+
+    container.innerHTML += html;
+}
+/** submitWrongAnswer(): 错题模式判定，答对即自动移除并下一题 */
+function submitWrongAnswer() {
+    const sel = document.querySelector("input[name='wrong_choice']:checked");
+    if (!sel) {
+        alert('请选择一个中文释义');
+        return;
+    }
+    const chosen = sel.value;
+    const entry = wrongList[currentIndex-1];
+    const correct = entry.meaning;
+    const questionWord = entry.english;
+
+    // 高亮
+    highlightChinese(correct, chosen, 'wrong_chinese');
+
+    if (chosen === correct) {
+        updateScore([ questionWord ], +1);
+        // 移出错题
+        wrongList.splice(currentIndex-1,1);
+        saveUserData();
+        // 自动下一题
+        setTimeout(() => nextWrong(), 500);
+    } else {
+        updateScore([ questionWord ], -1);
+        recordWrong(correct, [ questionWord ]);
+        saveUserData();
+        document.getElementById('nextWrongBtn').style.display = 'inline-block';
+    }
+}
+/** iDontKnowWrong(): 错题我不会，高亮正确，随后下一题 */
+function iDontKnowWrong() {
+    const entry = wrongList[currentIndex-1];
+    const correct = entry.meaning;
+    highlightChinese(correct, correct, 'wrong_chinese');
+    updateScore([ entry.english ], -1);
+    recordWrong(correct, [ entry.english ]);
+    document.getElementById('nextWrongBtn').style.display = 'inline-block';
+}

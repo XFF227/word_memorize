@@ -1,86 +1,127 @@
-/* Basic reset and typography */
-body {
+/* ========== responsive.css ========== */
+/* 通用重置 */
+* {
+    box-sizing: border-box;
     margin: 0;
-    font-family: sans-serif;
+    padding: 0;
 }
-h3 {
-    margin-top: 0;
+body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    background: #fafafa;
+    color: #333;
+    padding-bottom: 60px; /* 给底部导航留空间 */
 }
 
-/* Tab content sections */
+/* Tab 内容 */
 .tab {
-    display: none; /* Hide all tabs by default */
+    display: none;
     padding: 1rem;
 }
 .tab.active {
-    display: block; /* Show active tab */
+    display: block;
 }
 
-/* Card style for word groups */
+/* 卡片样式 */
 .card {
-    background: #f9f9f9;
+    background: #fff;
     border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    margin: 10px 0;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-.card strong {
+
+/* 英文题干/中文释义选项 */
+.chinese-options label {
     display: block;
-    margin-bottom: 5px;
+    margin: 0.5rem 0;
+    font-size: 1rem;
+    cursor: pointer;
+}
+.chinese-options input {
+    margin-right: 0.5rem;
 }
 
-/* Flashcards tab adjustments */
-#flashcards #bulkAddBtn {
-    margin-bottom: 10px;
+/* 按钮 */
+button {
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 4px;
+    background: #007bff;
+    color: white;
+    cursor: pointer;
 }
-#cardsContainer .card strong {
-    font-size: 1.1em;
+button:hover {
+    background: #0056b3;
+}
+button[style*="display:none"] {
+    visibility: hidden;
 }
 
-/* Quiz and Wrong tabs */
-.quiz-controls {
-    margin-bottom: 10px;
-}
-.choices label, .chinese-options label {
-    margin: 5px 0;
-    display: block;
-}
-
-/* Navigation bar */
+/* 底部导航 */
 .nav {
     position: fixed;
     bottom: 0;
+    left: 0;
     width: 100%;
-    background: #efefef;
     display: flex;
+    background: #fff;
+    border-top: 1px solid #ddd;
 }
 .nav button {
     flex: 1;
-    padding: 10px;
-    border: none;
-    background: #f0f0f0;
-    font-size: 1em;
+    text-align: center;
+    padding: 0.75rem 0;
+    font-size: 1rem;
 }
 .nav button:hover {
-    background: #e0e0e0;
+    background: #f0f0f0;
 }
 
-/* Modal dialog for bulk add */
+/* 题号显示 */
+#quizArea > div:first-child,
+#wrongArea > div:first-child {
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Bulk Add 模态框 */
 .modal {
     display: none;
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.4);
     align-items: center;
     justify-content: center;
 }
 .modal-content {
     background: #fff;
-    padding: 20px;
-    width: 300px;
-    border-radius: 4px;
+    border-radius: 6px;
+    padding: 1rem;
+    width: 90%;
+    max-width: 400px;
 }
-.modal-content textarea {
-    width: 100%;
+
+/* 响应式调整 */
+@media (min-width: 600px) {
+    .card {
+        padding: 1.5rem;
+    }
+    button {
+        font-size: 1.1rem;
+    }
+}
+@media (min-width: 900px) {
+    body {
+        padding: 2rem 4rem 4rem;
+    }
+    .modal-content {
+        max-width: 500px;
+    }
 }
