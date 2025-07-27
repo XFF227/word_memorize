@@ -383,54 +383,7 @@ window.onload = async function() {
 };
 
 
-/** nextQuiz(): 出题，英文→四个中文选项 + 题号/总题数 显示 */
-function nextQuiz() {
-    const container = document.getElementById('quizArea');
-    container.innerHTML = '';
 
-    // 如果已完成
-    if (currentIndex >= quizOrder.length) {
-        container.innerHTML = '<p>做题结束！</p>';
-        return;
-    }
-
-    // 显示题号
-    const total = quizOrder.length;
-    const num = currentIndex + 1;
-    container.innerHTML = `<div style="margin-bottom:0.5em;">第 ${num} 题 / 共 ${total} 题</div>`;
-
-    // 取当前测试的中文释义键
-    const meaningKey = quizOrder[currentIndex++];
-    currentQuestion = meaningKey;
-    // 正确中文释义
-    const correctChinese = data[meaningKey][1];
-    // 干扰释义
-    const otherMeanings = keys.filter(k => k !== meaningKey).map(k => data[k][1]);
-    const distractors = [];
-    while (distractors.length < 3 && otherMeanings.length) {
-        const idx = Math.floor(Math.random() * otherMeanings.length);
-        const m = otherMeanings.splice(idx, 1)[0];
-        if (!distractors.includes(m)) distractors.push(m);
-    }
-    const choices = [correctChinese, ...distractors].sort(() => Math.random() - 0.5);
-
-    // 题干（随便取组内第一个英文）
-    const questionWord = data[meaningKey][0][0];
-    let html = `<div class="card"><strong>${questionWord}</strong><br>`;
-    html += `<div class="chinese-options">`;
-    choices.forEach(ch => {
-        html += `<label id="chinese_${ch}">` +
-            `<input type="radio" name="quiz_choice" value="${ch}"> ${ch}` +
-            `</label><br>`;
-    });
-    html += `</div>`;
-    html += `<button onclick="submitAnswer()">提交</button>`;
-    html += `<button onclick="iDontKnow()">我不会</button>`;
-    html += `<button id="nextQuizBtn" onclick="nextQuiz()" style="display:none;margin-top:1rem;">下一题</button>`;
-    html += `</div>`;
-
-    container.innerHTML += html;
-}
 /** submitAnswer(): 检查中文选项是否正确，答对自动跳转下一题，答错入错题集 */
 function submitAnswer() {
     const sel = document.querySelector("input[name='quiz_choice']:checked");
@@ -474,7 +427,83 @@ function iDontKnow() {
     recordWrong(currentQuestion, [ questionWord ]);
     document.getElementById('nextQuizBtn').style.display = 'inline-block';
 }
-/** nextWrong(): 错题模式 → 英文题干→四中文选项 + 题号/总题数 */
+/* ========== 新增全局变量 ========== */
+let quizIdx = 0, quizWord = null;
+let wrongIdx = 0;
+
+/* ========== 修改 nextQuiz()，记录题目并添加“删除本题”按钮 ========== */
+function nextQuiz() {
+    const container = document.getElementById('quizArea');
+    container.innerHTML = '';
+
+    if (currentIndex >= quizOrder.length) {
+        container.innerHTML = '<p>做题结束！</p>';
+        return;
+    }
+
+    // 题号
+    const total = quizOrder.length, num = currentIndex + 1;
+    container.innerHTML = `<div style="margin-bottom:0.5em;">第 ${num} 题 / 共 ${total} 题</div>`;
+
+    // 获取 key 与正确释义
+    const meaningKey    = quizOrder[currentIndex++];
+    currentQuestion     = meaningKey;
+    const correctChinese = data[meaningKey][1];
+
+    // 英文题干 & 记录索引
+    quizWord = data[meaningKey][0][0];
+    quizIdx  = currentIndex - 1;
+
+    // 干扰项...
+    const otherMeanings = keys.filter(k => k !== meaningKey).map(k => data[k][1]);
+    const distractors   = [];
+    while (distractors.length < 3 && otherMeanings.length) {
+        const idx = Math.floor(Math.random() * otherMeanings.length);
+        const m   = otherMeanings.splice(idx,1)[0];
+        distractors.push(m);
+    }
+    const choices = [correctChinese, ...distractors].sort(() => Math.random() - 0.5);
+
+    // 渲染题干和选项
+    let html = `<div class="card"><strong>${quizWord}</strong><br><div class="chinese-options">`;
+    choices.forEach(ch => {
+        html += `<label id="chinese_${ch}">` +
+            `<input type="radio" name="quiz_choice" value="${ch}"> ${ch}` +
+            `</label><br>`;
+    });
+    html += `</div>`;
+    html += `<button onclick="submitAnswer()">提交</button>`;
+    html += `<button onclick="iDontKnow()">我不会</button>`;
+    html += `<button onclick="deleteThisQuiz()" style="margin-left:0.5em;background:#e74c3c;">删除本题</button>`;
+    html += `<button id="nextQuizBtn" onclick="nextQuiz()" style="display:none;margin-top:1rem;">下一题</button>`;
+    html += `</div>`;
+
+    container.innerHTML += html;
+}
+
+/** deleteThisQuiz(): 从 wordList 删除当前 quizWord 并刷新 */
+function deleteThisQuiz() {
+    // 删除该单词
+    wordList = wordList.filter(w => w.english !== quizWord);
+    saveUserData();
+    // 重新构建并刷新
+    buildDataGroups();
+    updateQuizOptions();
+    // 回退到删除前的索引，直接出下一题
+    currentIndex = quizIdx;
+    nextQuiz();
+}
+
+
+/** submitWrongAnswer():
+ * 错题模式下提交→判定 & 自动移除/录入 & 自动下一题或显示按钮
+ * 修正：更新 updateScore/recordWrong 时也用 entry.correct[0] */
+/* ========== wrong.js（修正版） ========== */
+
+/** nextWrong():
+ * 错题模式—“给一个英文，四个中文选项”
+ * 顶部显示 第 X 题 / 共 Y 题
+ */
 function nextWrong() {
     const container = document.getElementById('wrongArea');
     container.innerHTML = '';
@@ -488,27 +517,25 @@ function nextWrong() {
 
     // 顶部题号
     const total = wrongList.length;
-    const num = currentIndex + 1;
+    const num   = currentIndex + 1;
     container.innerHTML = `<div style="margin-bottom:0.5em;">第 ${num} 题 / 共 ${total} 题</div>`;
 
-    // 本轮数据
-    const entry = wrongList[currentIndex++];
+    // 本轮错题
+    const entry          = wrongList[currentIndex++];
     const correctChinese = entry.meaning;
-    const questionWord = entry.english;
+    const questionWord   = entry.correct[0];
 
-    // 干扰项
+    // 构造干扰中文释义
     const otherMeanings = keys.filter(k => k !== correctChinese).map(k => data[k][1]);
-    const distractors = [];
+    const distractors   = [];
     while (distractors.length < 3 && otherMeanings.length) {
         const idx = Math.floor(Math.random() * otherMeanings.length);
-        const m = otherMeanings.splice(idx,1)[0];
-        if (!distractors.includes(m)) distractors.push(m);
+        distractors.push(otherMeanings.splice(idx, 1)[0]);
     }
     const choices = [correctChinese, ...distractors].sort(() => Math.random() - 0.5);
 
-    // 渲染
-    let html = `<div class="card"><strong>${questionWord}</strong><br>`;
-    html += `<div class="chinese-options">`;
+    // 渲染题干和选项
+    let html = `<div class="card"><strong>${questionWord}</strong><br><div class="chinese-options">`;
     choices.forEach(ch => {
         html += `<label id="wrong_chinese_${ch}">` +
             `<input type="radio" name="wrong_choice" value="${ch}"> ${ch}` +
@@ -517,46 +544,74 @@ function nextWrong() {
     html += `</div>`;
     html += `<button onclick="submitWrongAnswer()">提交</button>`;
     html += `<button onclick="iDontKnowWrong()">我不会</button>`;
+    // 新增删除本题按钮
+    html += `<button onclick="deleteThisWrong()" style="margin-left:0.5em;background:#e74c3c;">删除本题</button>`;
     html += `<button id="nextWrongBtn" onclick="nextWrong()" style="display:none;margin-top:1rem;">下一题</button>`;
     html += `</div>`;
 
     container.innerHTML += html;
 }
-/** submitWrongAnswer(): 错题模式判定，答对即自动移除并下一题 */
+
+/** deleteThisWrong():
+ * 从 wrongList 中删除当前题目并继续下一题
+ */
+function deleteThisWrong() {
+    // 删除 currentIndex-1 对应的条目
+    wrongList.splice(currentIndex - 1, 1);
+    saveUserData();
+    // 将索引回退，以便 nextWrong 读取正确位置
+    currentIndex = Math.max(0, currentIndex - 1);
+    // 直接出下一题
+    nextWrong();
+}
+
+
+/** submitWrongAnswer():
+ * 错题模式下提交→判定 & 自动移除/录入 & 自动下一题或显示按钮
+ */
 function submitWrongAnswer() {
     const sel = document.querySelector("input[name='wrong_choice']:checked");
     if (!sel) {
         alert('请选择一个中文释义');
         return;
     }
-    const chosen = sel.value;
-    const entry = wrongList[currentIndex-1];
+
+    // 回退到当前条目
+    const entry   = wrongList[currentIndex - 1];
     const correct = entry.meaning;
-    const questionWord = entry.english;
+    const word    = entry.correct[0];
 
-    // 高亮
-    highlightChinese(correct, chosen, 'wrong_chinese');
+    // 高亮中文选项
+    highlightChinese(correct, sel.value, 'wrong_chinese');
 
-    if (chosen === correct) {
-        updateScore([ questionWord ], +1);
-        // 移出错题
-        wrongList.splice(currentIndex-1,1);
+    if (sel.value === correct) {
+        // 答对：+1 分 & 移出错题
+        updateScore([word], +1);
+        wrongList.splice(currentIndex - 1, 1);
         saveUserData();
         // 自动下一题
         setTimeout(() => nextWrong(), 500);
     } else {
-        updateScore([ questionWord ], -1);
-        recordWrong(correct, [ questionWord ]);
+        // 答错：-1 分 & 录入错题
+        updateScore([word], -1);
+        recordWrong(correct, [word]);
         saveUserData();
         document.getElementById('nextWrongBtn').style.display = 'inline-block';
     }
 }
-/** iDontKnowWrong(): 错题我不会，高亮正确，随后下一题 */
+
+
+/** iDontKnowWrong():
+ * 错题模式下“我不会”→高亮正确 & 录分录错 & 显示【下一题】按钮
+ */
 function iDontKnowWrong() {
-    const entry = wrongList[currentIndex-1];
+    const entry   = wrongList[currentIndex - 1];
     const correct = entry.meaning;
+    const word    = entry.correct[0];
+
     highlightChinese(correct, correct, 'wrong_chinese');
-    updateScore([ entry.english ], -1);
-    recordWrong(correct, [ entry.english ]);
+    updateScore([word], -1);
+    recordWrong(correct, [word]);
+
     document.getElementById('nextWrongBtn').style.display = 'inline-block';
 }

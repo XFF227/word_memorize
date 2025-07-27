@@ -6,11 +6,13 @@
     padding: 0;
 }
 body {
-    font-family: "Helvetica Neue", Arial, sans-serif;
-    line-height: 1.5;
-    background: #fafafa;
-    color: #333;
-    padding-bottom: 60px; /* 给底部导航留空间 */
+    font-family: sans-serif;
+    margin: 0;
+    padding: 1rem;
+    background: #f5f5f5;
+    max-width: 90%;
+    overflow-x: hidden;
+    padding-bottom: 120px;
 }
 
 /* Tab 内容 */
@@ -45,19 +47,12 @@ body {
 
 /* 按钮 */
 button {
-    display: inline-block;
-    margin-top: 0.75rem;
-    padding: 0.5rem 1rem;
     font-size: 1rem;
-    border: none;
-    border-radius: 4px;
-    background: #007bff;
-    color: white;
-    cursor: pointer;
+    padding: 0.8rem 1.5rem;
+    border-radius: 6px;
+    margin: 0.5rem 0;
 }
-button:hover {
-    background: #0056b3;
-}
+
 button[style*="display:none"] {
     visibility: hidden;
 }
