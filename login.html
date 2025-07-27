@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Login/Register</title>
+  <style>
+    body { font-family: Arial; padding: 2em; max-width: 400px; margin: auto; }
+    input, button { display: block; width: 100%; margin-bottom: 1em; padding: 0.5em; }
+  </style>
+</head>
+<body>
+<h2>Login / Register</h2>
+<input type="text" id="username" placeholder="Username" required>
+<input type="password" id="password" placeholder="Password" required>
+<button onclick="login()">Login</button>
+<button onclick="register()">Register</button>
+
+<p id="message" style="color:red;"></p>
+
+<script>
+  const API_URL = 'https://6885b254f52d34140f6a541d.mockapi.io/word_users';  // 替换为你的 MockAPI 用户资源链接
+
+  async function login() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const msg = document.getElementById("message");
+
+    try {
+      const res = await fetch(`${API_URL}?username=${username}`);
+      const users = await res.json();
+
+      if (users.length === 0 || users[0].password !== password) {
+        msg.textContent = "Invalid username or password.";
+        return;
+      }
+
+      localStorage.setItem("user", JSON.stringify(users[0]));
+      location.href = "index.html"; // ✅ 跳转
+    } catch (e) {
+      msg.textContent = "Login failed.";
+      console.error(e);
+    }
+  }
+
+  async function register() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const msg = document.getElementById("message");
+
+    if (!username || !password) {
+      msg.textContent = "请输入用户名和密码";
+      return;
+    }
+
+    const API_URL = "https://6885b254f52d34140f6a541d.mockapi.io/word_users";
+
+    let existing = [];
+
+    try {
+      const checkRes = await fetch(`${API_URL}?username=${username}`);
+      if (checkRes.ok) {
+        const maybeArray = await checkRes.json();
+        if (Array.isArray(maybeArray)) {
+          existing = maybeArray;
+        } else {
+          console.warn("MockAPI 返回的不是数组：", maybeArray);
+          existing = [];
+        }
+      } else if (checkRes.status === 404) {
+        existing = []; // ✅ 空用户数据库，MockAPI返回"Not found"
+      } else {
+        throw new Error(`用户检查失败，状态码：${checkRes.status}`);
+      }
+    } catch (e) {
+      msg.textContent = "无法连接服务器，检查用户名失败。";
+      console.error("用户查重失败：", e);
+      return;
+    }
+
+    if (existing.some(u => u.username === username)) {
+      msg.textContent = "用户名已存在，请更换。";
+      return;
+    }
+
+    const userObj = {
+      username,
+      password,
+      scoreDict: {},
+      wrongSet: []
+    };
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userObj)
+      });
+
+      if (!res.ok) {
+        throw new Error(`注册失败，状态码：${res.status}`);
+      }
+
+      const newUser = await res.json();
+      localStorage.setItem("user", JSON.stringify(newUser));
+      location.href = "index.html";
+    } catch (e) {
+      msg.textContent = "注册失败，请稍后再试。";
+      console.error("注册提交失败：", e);
+    }
+  }
+
+</script>
+</body>
+</html>

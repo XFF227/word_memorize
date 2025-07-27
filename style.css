@@ -1,0 +1,86 @@
+/* Basic reset and typography */
+body {
+    margin: 0;
+    font-family: sans-serif;
+}
+h3 {
+    margin-top: 0;
+}
+
+/* Tab content sections */
+.tab {
+    display: none; /* Hide all tabs by default */
+    padding: 1rem;
+}
+.tab.active {
+    display: block; /* Show active tab */
+}
+
+/* Card style for word groups */
+.card {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 10px 0;
+}
+.card strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Flashcards tab adjustments */
+#flashcards #bulkAddBtn {
+    margin-bottom: 10px;
+}
+#cardsContainer .card strong {
+    font-size: 1.1em;
+}
+
+/* Quiz and Wrong tabs */
+.quiz-controls {
+    margin-bottom: 10px;
+}
+.choices label, .chinese-options label {
+    margin: 5px 0;
+    display: block;
+}
+
+/* Navigation bar */
+.nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #efefef;
+    display: flex;
+}
+.nav button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: #f0f0f0;
+    font-size: 1em;
+}
+.nav button:hover {
+    background: #e0e0e0;
+}
+
+/* Modal dialog for bulk add */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    width: 300px;
+    border-radius: 4px;
+}
+.modal-content textarea {
+    width: 100%;
+}

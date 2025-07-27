@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocabulary Trainer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- Login check using localStorage (redirects if not logged in) -->
+<script>
+    try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (!user || !user.username || !user.user) {
+            location.href = "login.html";
+        }
+    } catch (e) {
+        location.href = "login.html";
+    }
+</script>
+
+<!-- Flashcards Tab: displays words grouped by date, with bulk-add functionality -->
+<div id="flashcards" class="tab active">
+    <button id="bulkAddBtn" onclick="showBulkAddModal()">批量添加单词</button>
+    <div id="cardsContainer"></div>
+</div>
+
+<!-- Quiz Tab: allows selection of practice scope and starts quiz questions -->
+<div id="quiz" class="tab">
+    <div class="quiz-controls">
+        <select id="quizSelect">
+            <option value="negative">全部<strong>未掌握</strong>单词（scoreValue < 0）</option>
+            <!-- Date options will be populated here via JS -->
+        </select>
+        <button onclick="startQuiz()">开始做题</button>
+    </div>
+    <div id="quizArea"></div>
+</div>
+
+<!-- Wrong (Review) Tab: practice of wrong-list words -->
+<div id="wrong" class="tab">
+    <button onclick="startWrongReview()">开始错题训练</button>
+    <div id="wrongCards"></div>
+    <div id="wrongArea"></div>
+</div>
+
+<!-- Bottom navigation bar for tabs -->
+<div class="nav">
+    <button onclick="switchTab('flashcards')">背词</button>
+    <button onclick="switchTab('quiz')">做题</button>
+    <button onclick="switchTab('wrong')">错题</button>
+</div>
+
+<!-- Modal for bulk adding words -->
+<div id="bulkAddModal" class="modal">
+    <div class="modal-content">
+        <h3>批量添加单词</h3>
+        <textarea id="bulkInput" placeholder="word1,中文释义\nword2,中文释义" rows="5"></textarea><br>
+        <button onclick="saveBulkAdd()">保存</button>
+        <button onclick="closeBulkAdd()">取消</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
