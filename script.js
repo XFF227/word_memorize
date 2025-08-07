@@ -585,16 +585,9 @@ function submitWrongAnswer() {
     highlightChinese(correct, sel.value, 'wrong_chinese');
 
     if (sel.value === correct) {
-        // 答对：+1 分 & 移出错题
-        updateScore([word], +1);
-        wrongList.splice(currentIndex - 1, 1);
-        saveUserData();
-        // 自动下一题
-        setTimeout(() => nextWrong(), 500);
     } else {
         // 答错：-1 分 & 录入错题
         updateScore([word], -1);
-        recordWrong(correct, [word]);
         saveUserData();
         document.getElementById('nextWrongBtn').style.display = 'inline-block';
     }
