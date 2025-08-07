@@ -585,6 +585,7 @@ function submitWrongAnswer() {
     highlightChinese(correct, sel.value, 'wrong_chinese');
 
     if (sel.value === correct) {
+        document.getElementById('nextWrongBtn').style.display = 'inline-block';
     } else {
         // 答错：-1 分 & 录入错题
         updateScore([word], -1);
